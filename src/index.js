@@ -160,8 +160,8 @@ async function capturePageSnapshot(target, options) {
         .map((control) => ({
           tag: control.tagName.toLowerCase(),
           type: control.getAttribute("type") || "",
-          name: control.getAttribute("name") || "",
-          label: pickText(control.innerText || control.getAttribute("aria-label") || control.getAttribute("placeholder"))
+          htmlName: control.getAttribute("name") || "",
+          accessibleLabel: pickText(control.getAttribute("aria-label") || control.innerText || control.getAttribute("placeholder"))
         }));
 
       const headings = Array.from(document.querySelectorAll("h1, h2, h3"))

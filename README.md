@@ -121,6 +121,12 @@ With `OPENAI_API_KEY` set, `npm run demo:llm` writes an LLM-generated review to:
 examples/llm-report.md
 ```
 
+A sanitized sample generated from a real LLM run is available at:
+
+```text
+docs/sample-llm-report.md
+```
+
 ## Screening question answers
 
 **Last LLM API project:** `llm-browser-reviewer`, a Node.js CLI project that uses the OpenAI Responses API to generate QA-style review reports from browser-captured page snapshots.
@@ -135,5 +141,5 @@ This project intentionally keeps the API key outside source control. Set `OPENAI
 
 - Browser automation dry-run has been tested with Playwright against `examples/sample-page.html`.
 - GitHub Actions runs the same dry-run in a clean CI environment.
-- A real LLM API call requires `OPENAI_API_KEY`; an OpenAI-compatible relay can be configured with `OPENAI_BASE_URL`.
+- A real LLM API call has been verified through an OpenAI-compatible relay using `OPENAI_BASE_URL` and `gpt-5.4-mini`.
 - No API key is committed to this repository.
