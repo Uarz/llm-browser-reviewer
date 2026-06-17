@@ -32,6 +32,7 @@ Options:
 Examples:
   node src/index.js --url https://example.com --dry-run
   OPENAI_API_KEY=... node src/index.js --url https://example.com --output report.md
+  OPENAI_BASE_URL=https://your-openai-compatible-relay/v1 OPENAI_API_KEY=... node src/index.js --url https://example.com --model gpt-4o-mini --output report.md
 `);
 }
 
@@ -223,9 +224,15 @@ async function runOpenAIReview(prompt, model) {
     throw new Error("OPENAI_API_KEY is required unless --dry-run is used.");
   }
 
-  const client = new OpenAI({
+  const clientOptions = {
     apiKey: process.env.OPENAI_API_KEY
-  });
+  };
+
+  if (process.env.OPENAI_BASE_URL) {
+    clientOptions.baseURL = process.env.OPENAI_BASE_URL;
+  }
+
+  const client = new OpenAI(clientOptions);
 
   const response = await client.responses.create({
     model,

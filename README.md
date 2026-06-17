@@ -45,6 +45,22 @@ On PowerShell:
 $env:OPENAI_API_KEY="your-api-key"
 ```
 
+For an OpenAI-compatible relay or gateway, also set `OPENAI_BASE_URL`:
+
+```powershell
+$env:OPENAI_BASE_URL="https://your-relay.example.com/v1"
+$env:OPENAI_API_KEY="your-relay-key"
+$env:OPENAI_MODEL="your-supported-model"
+```
+
+On macOS/Linux:
+
+```bash
+export OPENAI_BASE_URL="https://your-relay.example.com/v1"
+export OPENAI_API_KEY="your-relay-key"
+export OPENAI_MODEL="your-supported-model"
+```
+
 ## Usage
 
 Dry run against the included sample page:
@@ -77,6 +93,12 @@ Choose a model:
 node src/index.js --url https://example.com --model gpt-5.5 --output report.md
 ```
 
+Use an OpenAI-compatible relay:
+
+```bash
+OPENAI_BASE_URL="https://your-relay.example.com/v1" OPENAI_API_KEY="your-relay-key" node src/index.js --url https://example.com --model your-supported-model --output report.md
+```
+
 ## Example output
 
 `npm run demo` writes a dry-run browser snapshot to:
@@ -105,4 +127,5 @@ This project intentionally keeps the API key outside source control. Set `OPENAI
 
 - Browser automation dry-run has been tested with Playwright against `examples/sample-page.html`.
 - GitHub Actions runs the same dry-run in a clean CI environment.
-- A real OpenAI API call requires `OPENAI_API_KEY`; no API key is committed to this repository.
+- A real LLM API call requires `OPENAI_API_KEY`; an OpenAI-compatible relay can be configured with `OPENAI_BASE_URL`.
+- No API key is committed to this repository.
