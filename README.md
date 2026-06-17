@@ -100,3 +100,9 @@ examples/llm-report.md
 ## Notes
 
 This project intentionally keeps the API key outside source control. Set `OPENAI_API_KEY` in the environment before running a real LLM review.
+
+## Verification status
+
+- Browser automation dry-run has been tested with Playwright against `examples/sample-page.html`.
+- GitHub Actions runs the same dry-run in a clean CI environment.
+- A real OpenAI API call requires `OPENAI_API_KEY`; no API key is committed to this repository.
