@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import { chromium } from "playwright";
 
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-5.5";
+const DEFAULT_BROWSER_PROVIDER = "playwright";
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_TEXT_CHARS = 8000;
 const MAX_ITEMS = 30;
@@ -23,6 +24,7 @@ Options:
   --url <value>          URL or local HTML file to review.
   --task <value>         Review focus for the LLM.
   --model <value>        OpenAI model name. Default: ${DEFAULT_MODEL}
+  --browser-provider <value>  Browser provider: playwright|humanbrowser. Default: ${DEFAULT_BROWSER_PROVIDER}
   --output <path>        Write the Markdown report to a file.
   --screenshot <path>    Save a full-page screenshot.
   --timeout <ms>         Navigation timeout. Default: ${DEFAULT_TIMEOUT_MS}
@@ -34,12 +36,14 @@ Examples:
   node src/index.js --url https://example.com --dry-run
   OPENAI_API_KEY=... node src/index.js --url https://example.com --output report.md
   OPENAI_BASE_URL=https://your-openai-compatible-relay/v1 OPENAI_API_KEY=... node src/index.js --url https://example.com --model gpt-4o-mini --output report.md
+  HUMANBROWSER_API_TOKEN=hb_live_... node src/index.js --url https://example.com --browser-provider humanbrowser --dry-run
 `);
 }
 
 function parseArgs(argv) {
   const options = {
     model: DEFAULT_MODEL,
+    browserProvider: DEFAULT_BROWSER_PROVIDER,
     timeout: DEFAULT_TIMEOUT_MS,
     task: "Evaluate this page as an AI developer tester. Identify UX, reliability, accessibility, and automation-testing observations.",
     dryRun: false,
@@ -67,6 +71,11 @@ function parseArgs(argv) {
           throw new Error("--timeout must be a positive number");
         }
         options.timeout = parsed;
+      } else if (key === "browser-provider") {
+        if (!["playwright", "humanbrowser"].includes(value)) {
+          throw new Error("--browser-provider must be playwright or humanbrowser");
+        }
+        options.browserProvider = value;
       } else {
         options[key] = value;
       }
@@ -202,6 +211,285 @@ async function capturePageSnapshot(target, options) {
   }
 }
 
+function toCleanString(value) {
+  if (typeof value === "string") {
+    return value.replace(/\s+/g, " ").trim();
+  }
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function parseJsonObjectFromText(text) {
+  const trimmed = toCleanString(text);
+  if (!trimmed) {
+    return null;
+  }
+
+  const fenceMatch = text.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const candidate = fenceMatch ? fenceMatch[1].trim() : text.trim();
+
+  try {
+    const parsed = JSON.parse(candidate);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    const start = candidate.indexOf("{");
+    const end = candidate.lastIndexOf("}");
+    if (start === -1 || end <= start) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(candidate.slice(start, end + 1));
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function normalizeHumanBrowserHeadings(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(0, MAX_ITEMS)
+    .map((heading) => {
+      if (typeof heading === "string") {
+        return { level: "", text: toCleanString(heading) };
+      }
+
+      if (!heading || typeof heading !== "object") {
+        return null;
+      }
+
+      return {
+        level: toCleanString(heading.level || heading.tag || heading.role),
+        text: toCleanString(heading.text || heading.label || heading.name)
+      };
+    })
+    .filter((heading) => heading && heading.text);
+}
+
+function normalizeHumanBrowserLinks(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(0, MAX_ITEMS)
+    .map((link) => {
+      if (!link || typeof link !== "object") {
+        return null;
+      }
+
+      return {
+        text: toCleanString(link.text || link.label || link.name),
+        href: toCleanString(link.href || link.url)
+      };
+    })
+    .filter((link) => link && (link.text || link.href));
+}
+
+function normalizeHumanBrowserControls(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(0, MAX_ITEMS)
+    .map((control) => {
+      if (!control || typeof control !== "object") {
+        return null;
+      }
+
+      return {
+        tag: toCleanString(control.tag || control.role || control.type),
+        type: toCleanString(control.type || control.inputType),
+        htmlName: toCleanString(control.htmlName || control.name),
+        accessibleLabel: toCleanString(control.accessibleLabel || control.label || control.text || control.placeholder)
+      };
+    })
+    .filter((control) => control && (control.tag || control.type || control.htmlName || control.accessibleLabel));
+}
+
+function unwrapHumanBrowserSnapshotCandidate(candidate) {
+  if (!candidate || typeof candidate !== "object") {
+    return null;
+  }
+
+  for (const key of ["snapshot", "pageSnapshot", "browserSnapshot"]) {
+    if (candidate[key] && typeof candidate[key] === "object" && !Array.isArray(candidate[key])) {
+      return candidate[key];
+    }
+  }
+
+  return candidate;
+}
+
+function normalizeHumanBrowserStructuredSnapshot(candidate, target) {
+  const snapshot = unwrapHumanBrowserSnapshotCandidate(candidate);
+  if (!snapshot) {
+    return null;
+  }
+
+  const headings = normalizeHumanBrowserHeadings(snapshot.headings);
+  const links = normalizeHumanBrowserLinks(snapshot.links);
+  const controls = normalizeHumanBrowserControls(snapshot.controls);
+  const normalized = {
+    finalUrl: toCleanString(snapshot.finalUrl || snapshot.currentUrl || snapshot.url) || target,
+    title: toCleanString(snapshot.title),
+    metaDescription: toCleanString(snapshot.metaDescription || snapshot.description),
+    headings,
+    links,
+    controls,
+    bodyText: toCleanString(snapshot.bodyText || snapshot.pageText || snapshot.summary || snapshot.text)
+  };
+
+  const hasPageSignal =
+    normalized.title ||
+    normalized.metaDescription ||
+    normalized.bodyText ||
+    headings.length > 0 ||
+    links.length > 0 ||
+    controls.length > 0 ||
+    normalized.finalUrl !== target;
+
+  return hasPageSignal ? normalized : null;
+}
+
+function collectHumanBrowserOutputs(session) {
+  const artifactData = [];
+  const artifactTexts = [];
+
+  for (const artifact of Array.isArray(session.artifacts) ? session.artifacts : []) {
+    for (const part of Array.isArray(artifact.parts) ? artifact.parts : []) {
+      if (part.kind === "data" && part.data && typeof part.data === "object" && !Array.isArray(part.data)) {
+        artifactData.push(part.data);
+      }
+
+      if (part.kind === "text" && typeof part.text === "string") {
+        artifactTexts.push(part.text);
+      }
+    }
+  }
+
+  return {
+    artifactData,
+    artifactTexts,
+    resultText: typeof session.text === "string" ? session.text.trim() : ""
+  };
+}
+
+function findHumanBrowserStructuredSnapshot(session, target) {
+  const { artifactData, artifactTexts, resultText } = collectHumanBrowserOutputs(session);
+
+  for (const data of artifactData) {
+    const snapshot = normalizeHumanBrowserStructuredSnapshot(data, target);
+    if (snapshot) {
+      return { snapshot, source: "artifact-data" };
+    }
+  }
+
+  for (const text of artifactTexts) {
+    const parsed = parseJsonObjectFromText(text);
+    const snapshot = normalizeHumanBrowserStructuredSnapshot(parsed, target);
+    if (snapshot) {
+      return { snapshot, source: "artifact-text" };
+    }
+  }
+
+  const parsedResultText = parseJsonObjectFromText(resultText);
+  const snapshot = normalizeHumanBrowserStructuredSnapshot(parsedResultText, target);
+  return snapshot ? { snapshot, source: "result-text" } : null;
+}
+
+async function captureHumanBrowserSnapshot(target, options) {
+  if (!process.env.HUMANBROWSER_API_TOKEN && !process.env.HB_TOKEN) {
+    throw new Error("HUMANBROWSER_API_TOKEN or HB_TOKEN is required for --browser-provider humanbrowser.");
+  }
+
+  const humanbrowserModule = await import("@virixlabs/humanbrowser");
+  const { runOnCloud } = humanbrowserModule.default ?? humanbrowserModule;
+
+  let liveViewerUrl = null;
+  const session = await runOnCloud({
+    goal: [
+      "Open the target URL in a HumanBrowser cloud browser and inspect the visible page for QA review.",
+      "Return a compact JSON object with keys finalUrl, title, metaDescription, headings, links, controls, and bodyText.",
+      "Use arrays for headings, links, and controls. If exact DOM extraction is unavailable, leave arrays empty and put a concise observed summary in bodyText.",
+      "Do not include markdown or credentials in the final answer.",
+      `Target URL: ${target}`
+    ].join(" "),
+    apiToken: process.env.HUMANBROWSER_API_TOKEN || process.env.HB_TOKEN,
+    apiBase: process.env.HUMANBROWSER_API_BASE || undefined,
+    profile: "llm-browser-reviewer",
+    contextData: {
+      targetUrl: target,
+      requestedCapture: "page summary",
+      outputShape: {
+        finalUrl: "string",
+        title: "string",
+        metaDescription: "string",
+        headings: [{ level: "string", text: "string" }],
+        links: [{ text: "string", href: "string" }],
+        controls: [{ tag: "string", type: "string", htmlName: "string", accessibleLabel: "string" }],
+        bodyText: "concise visible-page summary"
+      }
+    },
+    onStatus: (status) => {
+      if (status && status.viewerUrl && !liveViewerUrl) {
+        liveViewerUrl = status.viewerUrl;
+        console.error(`HumanBrowser live viewer: ${liveViewerUrl}`);
+      }
+    }
+  });
+
+  const resultText = typeof session.text === "string" ? session.text.trim() : "";
+  const viewerUrl = session.viewerUrl || liveViewerUrl || null;
+  const structured = findHumanBrowserStructuredSnapshot(session, target);
+  const structuredSnapshot = structured?.snapshot || {};
+
+  const normalized = {
+    capturedAt: new Date().toISOString(),
+    automationTool: "HumanBrowser Cloud",
+    requestedUrl: target,
+    finalUrl: structuredSnapshot.finalUrl || target,
+    title: structuredSnapshot.title || "",
+    metaDescription: structuredSnapshot.metaDescription || "",
+    headings: structuredSnapshot.headings || [],
+    links: structuredSnapshot.links || [],
+    controls: structuredSnapshot.controls || [],
+    bodyText: trimText(structuredSnapshot.bodyText || resultText || ""),
+    browserSignals: {
+      consoleErrors: [],
+      failedRequests: []
+    },
+    providerDetails: {
+      provider: "humanbrowser",
+      viewerUrl,
+      taskId: session.taskId || null,
+      state: session.state || "",
+      structuredOutputAvailable: Boolean(structured),
+      structuredOutputSource: structured?.source || null,
+      summaryText: resultText || ""
+    }
+  };
+
+  return normalized;
+}
+
+async function captureBrowserSnapshot(target, options) {
+  if (options.browserProvider === "humanbrowser") {
+    return captureHumanBrowserSnapshot(target, options);
+  }
+  return capturePageSnapshot(target, options);
+}
+
 function buildPrompt(snapshot, task) {
   return `You are an AI developer tester reviewing a web page captured through browser automation.
 
@@ -297,7 +585,7 @@ async function main() {
   }
 
   const target = await normalizeTarget(options.url);
-  const snapshot = await capturePageSnapshot(target, options);
+  const snapshot = await captureBrowserSnapshot(target, options);
   const prompt = buildPrompt(snapshot, options.task);
   const report = options.dryRun
     ? renderDryRunReport(snapshot, options.task)

@@ -4,19 +4,21 @@ LLM Browser Reviewer is a small, practical project that combines browser automat
 
 Repository: https://github.com/Uarz/llm-browser-reviewer
 
-It uses Playwright to open a web page, collect a structured browser snapshot, and optionally capture a screenshot. It then sends that snapshot to the OpenAI Responses API to generate a concise QA-style review report.
+It can use either Playwright or HumanBrowser Cloud to open a web page, collect browser-observed page context, and then send that context to the OpenAI Responses API to generate a concise QA-style review report.
 
 ## Why this project exists
 
 This repository demonstrates two concrete skills:
 
 - LLM API integration: calls the OpenAI Responses API from a Node.js CLI.
-- Browser automation: uses Playwright Chromium to navigate pages and collect testable UI signals.
+- Browser automation: uses Playwright Chromium for local structured snapshots.
+- Cloud browser automation: optionally uses HumanBrowser Cloud for a real remote browser session with a live viewer URL.
 
 ## Features
 
 - Open any `http`, `https`, or local HTML page.
 - Capture page title, URL, meta description, headings, visible links, visible controls, console warnings/errors, and failed network requests.
+- Run through HumanBrowser Cloud with `--browser-provider humanbrowser` for a remote browser-agent session.
 - Generate an LLM-based Markdown review report.
 - Support `--dry-run` mode to verify browser automation without using an API key.
 - Save reports and screenshots to local files.
@@ -25,6 +27,7 @@ This repository demonstrates two concrete skills:
 
 - Node.js 20+
 - An OpenAI API key for non-dry-run mode
+- Optional: a HumanBrowser token for cloud-browser mode
 
 ## Setup
 
@@ -51,6 +54,8 @@ Or create a local `.env` file in the project root. This file is ignored by Git:
 OPENAI_API_KEY=your-api-key
 OPENAI_BASE_URL=https://your-relay.example.com/v1
 OPENAI_MODEL=your-supported-model
+# Optional cloud browser provider
+HUMANBROWSER_API_TOKEN=hb_live_your-token
 ```
 
 For an OpenAI-compatible relay or gateway, also set `OPENAI_BASE_URL`:
@@ -67,6 +72,18 @@ On macOS/Linux:
 export OPENAI_BASE_URL="https://your-relay.example.com/v1"
 export OPENAI_API_KEY="your-relay-key"
 export OPENAI_MODEL="your-supported-model"
+```
+
+For HumanBrowser Cloud mode, set either `HUMANBROWSER_API_TOKEN` or `HB_TOKEN`:
+
+```powershell
+$env:HUMANBROWSER_API_TOKEN="hb_live_your-token"
+```
+
+On macOS/Linux:
+
+```bash
+export HUMANBROWSER_API_TOKEN="hb_live_your-token"
 ```
 
 ## Usage
@@ -107,6 +124,14 @@ Use an OpenAI-compatible relay:
 OPENAI_BASE_URL="https://your-relay.example.com/v1" OPENAI_API_KEY="your-relay-key" node src/index.js --url https://example.com --model your-supported-model --output report.md
 ```
 
+Run through HumanBrowser Cloud:
+
+```bash
+node src/index.js --url https://example.com --browser-provider humanbrowser --dry-run --output hb-dry-run-report.md
+```
+
+HumanBrowser mode starts a cloud browser-agent session and surfaces `providerDetails.viewerUrl` in the dry-run JSON when the service returns one. Unlike the Playwright provider, this path depends on HumanBrowser task output: it records a structured snapshot only when the cloud result includes parseable JSON data; otherwise it preserves the returned natural-language page summary in `bodyText` and `providerDetails.summaryText`.
+
 ## Example output
 
 `npm run demo` writes a dry-run browser snapshot to:
@@ -131,7 +156,7 @@ docs/sample-llm-report.md
 
 **Last LLM API project:** `llm-browser-reviewer`, a Node.js CLI project that uses the OpenAI Responses API to generate QA-style review reports from browser-captured page snapshots.
 
-**Browser automation tool used:** Playwright. It launches Chromium, navigates to a target URL or local HTML file, collects visible page content, headings, links, controls, console warnings/errors, failed requests, and optional screenshots.
+**Browser automation tools used:** Playwright and HumanBrowser Cloud. Playwright launches local Chromium, navigates to a target URL or local HTML file, collects visible page content, headings, links, controls, console warnings/errors, failed requests, and optional screenshots. HumanBrowser Cloud runs a remote browser-agent session and returns a live viewer URL plus task output for QA review.
 
 ## Notes
 
@@ -142,4 +167,5 @@ This project intentionally keeps the API key outside source control. Set `OPENAI
 - Browser automation dry-run has been tested with Playwright against `examples/sample-page.html`.
 - GitHub Actions runs the same dry-run in a clean CI environment.
 - A real LLM API call has been verified through an OpenAI-compatible relay using `OPENAI_BASE_URL` and `gpt-5.4-mini`.
+- HumanBrowser Cloud support is implemented as an optional provider and keeps its token outside source control.
 - No API key is committed to this repository.
