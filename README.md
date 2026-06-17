@@ -45,6 +45,14 @@ On PowerShell:
 $env:OPENAI_API_KEY="your-api-key"
 ```
 
+Or create a local `.env` file in the project root. This file is ignored by Git:
+
+```text
+OPENAI_API_KEY=your-api-key
+OPENAI_BASE_URL=https://your-relay.example.com/v1
+OPENAI_MODEL=your-supported-model
+```
+
 For an OpenAI-compatible relay or gateway, also set `OPENAI_BASE_URL`:
 
 ```powershell
