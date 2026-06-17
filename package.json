@@ -1,0 +1,32 @@
+{
+  "name": "llm-browser-reviewer",
+  "version": "1.0.0",
+  "description": "A small LLM + Playwright project that reviews web pages by combining browser automation with the OpenAI Responses API.",
+  "type": "module",
+  "bin": {
+    "llm-browser-reviewer": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "demo": "node src/index.js --url ./examples/sample-page.html --dry-run --output ./examples/dry-run-report.md",
+    "demo:llm": "node src/index.js --url ./examples/sample-page.html --output ./examples/llm-report.md",
+    "check": "node src/index.js --url ./examples/sample-page.html --dry-run"
+  },
+  "keywords": [
+    "openai",
+    "llm",
+    "playwright",
+    "browser-automation",
+    "web-testing",
+    "qa"
+  ],
+  "author": "Huang Siting <2791003836@qq.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "openai": "^6.10.0",
+    "playwright": "^1.60.0"
+  }
+}

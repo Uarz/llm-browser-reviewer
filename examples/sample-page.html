@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Sample SaaS dashboard page used by LLM Browser Reviewer." />
+  <title>Acme Cloud Console</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #1f2933;
+      background: #f6f8fb;
+    }
+
+    header,
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    nav {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    a {
+      color: #155e75;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #d8e0e8;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 14px;
+    }
+
+    input {
+      padding: 10px;
+      border: 1px solid #b7c4cf;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Acme Cloud Console</h1>
+    <p>Monitor deployments, review logs, and inspect browser automation reports.</p>
+    <nav>
+      <a href="#deployments">Deployments</a>
+      <a href="#logs">Logs</a>
+      <a href="#settings">Settings</a>
+    </nav>
+  </header>
+  <main>
+    <section class="panel" id="deployments">
+      <h2>Deployments</h2>
+      <p>The latest production deployment completed with two warnings.</p>
+      <button type="button">Review deployment</button>
+    </section>
+    <section class="panel" id="logs">
+      <h2>Log Search</h2>
+      <label>
+        Search logs
+        <input name="query" placeholder="error, warning, request id" />
+      </label>
+      <button type="button">Search</button>
+    </section>
+    <section class="panel" id="settings">
+      <h2>API Settings</h2>
+      <p>API keys are rotated every 90 days. Browser automation should verify that sensitive values are never displayed in plain text.</p>
+    </section>
+  </main>
+</body>
+</html>
