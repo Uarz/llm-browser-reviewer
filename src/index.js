@@ -36,7 +36,7 @@ Examples:
   node src/index.js --url https://example.com --dry-run
   OPENAI_API_KEY=... node src/index.js --url https://example.com --output report.md
   OPENAI_BASE_URL=https://your-openai-compatible-relay/v1 OPENAI_API_KEY=... node src/index.js --url https://example.com --model gpt-4o-mini --output report.md
-  HUMANBROWSER_API_TOKEN=hb_live_... node src/index.js --url https://example.com --browser-provider humanbrowser --dry-run
+  HB_TOKEN=hb_live_... node src/index.js --url https://example.com --browser-provider humanbrowser --dry-run
 `);
 }
 
@@ -410,7 +410,7 @@ function findHumanBrowserStructuredSnapshot(session, target) {
 
 async function captureHumanBrowserSnapshot(target, options) {
   if (!process.env.HUMANBROWSER_API_TOKEN && !process.env.HB_TOKEN) {
-    throw new Error("HUMANBROWSER_API_TOKEN or HB_TOKEN is required for --browser-provider humanbrowser.");
+    throw new Error("HB_TOKEN is required for --browser-provider humanbrowser. HUMANBROWSER_API_TOKEN is also accepted as a legacy fallback.");
   }
 
   const humanbrowserModule = await import("@virixlabs/humanbrowser");

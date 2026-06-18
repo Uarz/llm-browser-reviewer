@@ -26,8 +26,8 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@virixlabs/humanbrowser": "^5.0.2",
     "dotenv": "^17.4.2",
-    "@virixlabs/humanbrowser": "^5.0.1",
     "openai": "^6.10.0",
     "playwright": "^1.60.0"
   }

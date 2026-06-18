@@ -55,7 +55,7 @@ OPENAI_API_KEY=your-api-key
 OPENAI_BASE_URL=https://your-relay.example.com/v1
 OPENAI_MODEL=your-supported-model
 # Optional cloud browser provider
-HUMANBROWSER_API_TOKEN=hb_live_your-token
+HB_TOKEN=hb_live_your-token
 ```
 
 For an OpenAI-compatible relay or gateway, also set `OPENAI_BASE_URL`:
@@ -74,16 +74,16 @@ export OPENAI_API_KEY="your-relay-key"
 export OPENAI_MODEL="your-supported-model"
 ```
 
-For HumanBrowser Cloud mode, set either `HUMANBROWSER_API_TOKEN` or `HB_TOKEN`:
+For HumanBrowser Cloud mode, set `HB_TOKEN`. The longer `HUMANBROWSER_API_TOKEN` name is still accepted by the SDK as a legacy fallback:
 
 ```powershell
-$env:HUMANBROWSER_API_TOKEN="hb_live_your-token"
+$env:HB_TOKEN="hb_live_your-token"
 ```
 
 On macOS/Linux:
 
 ```bash
-export HUMANBROWSER_API_TOKEN="hb_live_your-token"
+export HB_TOKEN="hb_live_your-token"
 ```
 
 ## Usage
